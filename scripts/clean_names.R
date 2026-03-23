@@ -11,11 +11,11 @@ source("c:/projects/reclink_project/R/link_names.R")
 # ── 1. Carregar nomes ─────────────────────────────────────────────────────────
 pe_de_meia <- data.table::fread(
   "C:/Users/giova/OneDrive/raw_data/inep/pe_de_meia/2025_new/202501_PeDeMeia.csv",
-  encoding = "Latin-1", select = "NOME BENEFICIÁRIO",nrows = 10000)
+  encoding = "Latin-1", select = "NOME BENEFICIÁRIO")
 
 bolsa_familia <- data.table::fread(
   "C:/Users/giova/OneDrive/raw_data/bolsa_familia/202101_BolsaFamilia_Pagamentos.csv",
-  encoding = "Latin-1", select = "NOME FAVORECIDO",nrows = 10000)
+  encoding = "Latin-1", select = "NOME FAVORECIDO")
 
 nomes_pdm <- unique(pe_de_meia[["NOME BENEFICIÁRIO"]])
 nomes_bf  <- unique(bolsa_familia[["NOME FAVORECIDO"]])

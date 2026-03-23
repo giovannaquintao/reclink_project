@@ -6,7 +6,7 @@ library(stringr)
 PARTICLES <- c("DE", "DA", "DO", "DOS", "DAS", "E", "DI", "DU", "VAN", "VON")
 PARTICLE_PATTERN <- paste0("\\b(", paste(PARTICLES, collapse = "|"), ")\\b")
 
-FIRST_NAME_FREQ_THRESHOLD <- 500
+FIRST_NAME_FREQ_THRESHOLD <- 200
 SURNAME_COMPOUND_THRESHOLD <- 200
 
 # ── Carregar dados IBGE ───────────────────────────────────────────────────────
@@ -31,10 +31,14 @@ remove_particles <- function(x) {
     str_squish()
 }
 
-# token 2 é parte do nome composto se freq como sobrenome < SURNAME_COMPOUND_THRESHOLD
+# token 2 é parte do nome composto se:
+#   - é sobrenome raro (freq < SURNAME_COMPOUND_THRESHOLD), OU
+#   - é primeiro nome comum (freq >= FIRST_NAME_FREQ_THRESHOLD)
 is_compound_token <- function(token) {
-  freq <- ibge_sobrenomes$frequencia[ibge_sobrenomes$nome_upper == token]
-  length(freq) == 0 || freq < SURNAME_COMPOUND_THRESHOLD
+  freq_sob <- ibge_sobrenomes$frequencia[ibge_sobrenomes$nome_upper == token]
+  is_rare_surname  <- length(freq_sob) == 0 || freq_sob < SURNAME_COMPOUND_THRESHOLD
+  is_common_fname  <- token %in% first_names_set
+  is_rare_surname || is_common_fname
 }
 
 parse_name <- function(nome_original) {
