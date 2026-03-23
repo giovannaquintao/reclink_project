@@ -1,0 +1,15 @@
+take pe de meia data (public), take bolsa fmailia data (public).
+
+ibge data on names can help 
+
+final goal: construct and R package to record linkage names
+
+steps: 
+construct first a function to reclink names. What I have learnt that is useful: 
+jw is just a first threshold
+separate what is first names from surnames
+check how common the surname is, penalize if the name has only common names and it is not fully matched with other
+remove particules
+treat different women and men (marriage can lead to new surname)
+
+

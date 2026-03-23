@@ -1,0 +1,18 @@
+Package: reclink
+Title: Record Linkage of Brazilian Names
+Version: 0.0.1
+Authors@R: person("User", role = c("aut", "cre"), email = "user@example.com")
+Description: Tools for probabilistic record linkage of Brazilian names,
+    using Jaro-Winkler similarity, name frequency weighting from IBGE data,
+    and gender-aware surname matching.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.0.0
+Imports:
+    stringi,
+    stringr,
+    dplyr
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
