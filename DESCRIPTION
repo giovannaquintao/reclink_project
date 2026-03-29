@@ -12,7 +12,9 @@ RoxygenNote: 7.0.0
 Imports:
     stringi,
     stringr,
-    dplyr
+    stringdist,
+    dplyr,
+    data.table
 Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

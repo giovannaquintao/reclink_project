@@ -32,7 +32,7 @@ test_function.R     # quick test script using data/test/
 
 ```r
 # install.packages("devtools")
-devtools::install_github("your-username/reclink")
+devtools::install_github("giovannaquintao/reclink_project")
 ```
 
 Dependencies: `stringi`, `stringr`, `stringdist`, `dplyr`, `data.table`

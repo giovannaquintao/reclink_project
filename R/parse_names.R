@@ -1,7 +1,3 @@
-library(data.table)
-library(stringi)
-library(stringr)
-
 utils::globalVariables(c(
   "ibge_nomes", "ibge_sobrenomes", "frequencia", "freq_pct", "name_upper"
 ))
@@ -10,6 +6,8 @@ PARTICLES <- c("DE", "DA", "DO", "DOS", "DAS", "E", "DI", "DU", "VAN", "VON")
 PARTICLE_PATTERN <- paste0("\\b(", paste(PARTICLES, collapse = "|"), ")\\b")
 
 compound_threshold <- 0.5  # min % of population to treat token as a first name
+
+.pkg_env <- new.env(parent = emptyenv())
 
 .data_dir <- function() {
   path <- system.file("data", package = "reclink")
@@ -22,13 +20,17 @@ compound_threshold <- 0.5  # min % of population to treat token as a first name
   stop("Cannot find data/ directory for package reclink.")
 }
 
-load(file.path(.data_dir(), "ibge_nomes.rda"))
-load(file.path(.data_dir(), "ibge_sobrenomes.rda"))
-
-setnames(ibge_nomes,      "nome_upper", "name_upper")
-setnames(ibge_sobrenomes, "nome_upper", "name_upper")
-
-ibge_nomes[, freq_pct := 100 * frequencia / sum(frequencia)]
+.onLoad <- function(libname, pkgname) {
+  load(file.path(.data_dir(), "ibge_nomes.rda"),      envir = .pkg_env)
+  load(file.path(.data_dir(), "ibge_sobrenomes.rda"), envir = .pkg_env)
+  if ("nome_upper" %in% names(.pkg_env$ibge_nomes))
+    data.table::setnames(.pkg_env$ibge_nomes,      "nome_upper", "name_upper")
+  if ("nome_upper" %in% names(.pkg_env$ibge_sobrenomes))
+    data.table::setnames(.pkg_env$ibge_sobrenomes, "nome_upper", "name_upper")
+  .pkg_env$ibge_nomes[,
+    freq_pct := 100 * frequencia / sum(frequencia)
+  ]
+}
 
 normalize <- function(x) {
   x |>
@@ -44,7 +46,7 @@ strip_particles <- function(x) {
 }
 
 is_compound_token <- function(token) {
-  pct <- ibge_nomes$freq_pct[ibge_nomes$name_upper == token]
+  pct <- .pkg_env$ibge_nomes$freq_pct[.pkg_env$ibge_nomes$name_upper == token]
   length(pct) > 0 && pct >= compound_threshold
 }
 
