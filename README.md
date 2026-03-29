@@ -12,8 +12,8 @@ Matching people across different administrative datasets is hard when names are 
 R/
   parse_names.R     # parse_name(): split full name into first name + surnames
   link_names.R      # link_names(): main record linkage function
-  utils_names.R     # normalize_name(), remove_particles(), split_name(), jw_sim()
-  ibge_freq.R       # download_ibge_names(), load_ibge_names(), frequency helpers
+  utils_names.R     # normalize_name(), remove_particles(), split_name()
+  ibge_freq.R       # frequency helpers for IBGE name data
 
 data/
   ibge_nomes.rda        # IBGE Census 2010 — first name frequencies
@@ -42,13 +42,13 @@ Dependencies: `stringi`, `stringr`, `stringdist`, `dplyr`, `data.table`
 ```r
 library(reclink)
 
-# Link by first letter only
-resultado <- link_names(nomes_a, nomes_b)
+# Link by first letter only (default)
+result <- link_names(names_a, names_b)
 
 # Link by first letters + date of birth + sex
-resultado <- link_names(
-  nomes_a      = dataset_a$nome,
-  nomes_b      = dataset_b$nome,
+result <- link_names(
+  names_a      = dataset_a$nome,
+  names_b      = dataset_b$nome,
   link_by      = c("first_letters", "date_birth", "sex"),
   n_letters    = 1,
   date_birth_a = dataset_a$data_nascimento,
@@ -71,28 +71,40 @@ resultado <- link_names(
 
 | Column | Description |
 |---|---|
-| `nome_original` | Name from `nomes_a` |
-| `nome_melhor_match` | Best matching name from `nomes_b` |
-| `primeiro_nome_a` / `primeiro_nome_b` | Parsed first names |
-| `sobrenomes_a` / `sobrenomes_b` | Parsed surnames |
-| `classificacao` | Match category (see below) |
-| `jw_primeiro_nome` | Jaro-Winkler distance for first name (0 = identical) |
-| `jw_sobrenomes` | Jaro-Winkler distance for surnames (0 = identical) |
+| `original` | Name from `names_a` |
+| `best_match` | Best matching name from `names_b` |
+| `first_name` / `first_name_match` | Parsed first names |
+| `surnames` / `surnames_match` | Parsed surnames |
+| `classification` | Match category (see below) |
+| `jw_first_name` | Jaro-Winkler distance for first name (0 = identical) |
+| `jw_surnames` | Jaro-Winkler distance for surnames (0 = identical) |
 
 ### Match classifications
 
-Both dimensions are evaluated independently:
+First name and surname are evaluated independently:
 
-**Primeiro nome:** `identico` | `faltando` (compound name partially absent) | `typo`
+**First name:** `identical` | `missing` (compound name partially absent) | `typo`
 
-**Sobrenome:** `identico` | `reordenado` | `faltando` | `typo`
+**Surname:** `identical` | `reordered` | `missing` | `typo`
 
-Combined into 12 categories, e.g.:
-- `identico` — exact match on both dimensions
-- `pn_identico_sob_reordenado` — first name identical, surnames reordered
-- `pn_faltando_sob_identico` — compound first name truncated, surnames identical
-- `pn_typo_sob_identico` — typo in first name, surnames identical
-- `no_match` / `pn_typo_sob_typo` — excluded from output
+Combined into 12 categories ranked by quality:
+
+| Classification | Meaning |
+|---|---|
+| `fn_identical_sur_identical` | Exact match on both dimensions |
+| `fn_identical_sur_reordered` | First name identical, surnames in different order |
+| `fn_identical_sur_missing` | First name identical, one side has fewer surnames |
+| `fn_identical_sur_typo` | First name identical, small surname difference |
+| `fn_missing_sur_identical` | Compound first name truncated, surnames identical |
+| `fn_typo_sur_identical` | Typo in first name, surnames identical |
+| `fn_missing_sur_reordered` | ... |
+| `fn_typo_sur_reordered` | ... |
+| `fn_missing_sur_missing` | ... |
+| `fn_typo_sur_missing` | ... |
+| `fn_missing_sur_typo` | ... |
+| `fn_typo_sur_typo` | Excluded from output |
+
+Pairs classified as `no_match` or `fn_typo_sur_typo` are excluded from the output.
 
 ## Data sources
 
@@ -106,5 +118,5 @@ source("data-raw/prepare_ibge_data.R")
 
 ## Roadmap
 
-- **Fase 1** (current): match by name only
-- **Fase 2**: add CPF and date of birth as decisive matching variables
+- **Phase 1** (current): match by name only
+- **Phase 2**: add CPF and date of birth as decisive matching variables
