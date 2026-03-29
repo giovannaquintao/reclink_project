@@ -2,81 +2,79 @@ library(dplyr)
 library(stringr)
 library(stringdist)
 
-# ── Helpers de comparação ─────────────────────────────────────────────────────
+utils::globalVariables(c(
+  "first_name_a", "first_name_b", "surnames_a", "surnames_b", "jw_first_name"
+))
 
-surname_tokens <- function(sob) {
-  if (is.na(sob)) character(0) else str_split(sob, " ")[[1]]
+split_surnames <- function(surnames) {
+  if (is.na(surnames)) character(0) else str_split(surnames, " ")[[1]]
 }
 
 jw_first <- function(a, b) {
   stringdist(a, b, method = "jw", p = 0.1)
 }
 
-jw_surnames <- function(sob_a, sob_b) {
-  tok_a <- surname_tokens(sob_a)
-  tok_b <- surname_tokens(sob_b)
+jw_surnames <- function(sur_a, sur_b) {
+  tok_a <- split_surnames(sur_a)
+  tok_b <- split_surnames(sur_b)
   if (length(tok_a) == 0 || length(tok_b) == 0) return(NA_real_)
-  scores <- sapply(tok_a, function(ta) min(stringdist(ta, tok_b, method = "jw", p = 0.1)))
+  scores <- sapply(tok_a, function(ta) {
+    min(stringdist(ta, tok_b, method = "jw", p = 0.1))
+  })
   mean(scores)
 }
 
-classify_match <- function(pn_a, sob_a, pn_b, sob_b, jw_pn, jw_sob) {
-  # ── flags de sobrenome ───────────────────────────────────────────────────────
-  tok_a <- sort(surname_tokens(sob_a))
-  tok_b <- sort(surname_tokens(sob_b))
+classify_match <- function(fn_a, sur_a, fn_b, sur_b, jw_fn, jw_sur) {
+  tok_a <- sort(split_surnames(sur_a))
+  tok_b <- sort(split_surnames(sur_b))
 
-  sob_identico   <- identical(tok_a, tok_b)
-  sob_reordenado <- setequal(tok_a, tok_b) && !sob_identico
-  sob_faltando   <- length(tok_a) != length(tok_b) &&
-                    (all(tok_a %in% tok_b) || all(tok_b %in% tok_a))
-  sob_typo       <- !sob_identico && !sob_reordenado && !sob_faltando &&
-                    !is.na(jw_sob) && jw_sob <= 0.15
+  sur_identical <- identical(tok_a, tok_b)
+  sur_reordered <- setequal(tok_a, tok_b) && !sur_identical
+  sur_missing   <- length(tok_a) != length(tok_b) &&
+    (all(tok_a %in% tok_b) || all(tok_b %in% tok_a))
+  sur_typo      <- !sur_identical && !sur_reordered && !sur_missing &&
+    !is.na(jw_sur) && jw_sur <= 0.15
 
-  # ── flags de primeiro nome ───────────────────────────────────────────────────
-  pn_tok_a <- str_split(trimws(pn_a), " ")[[1]]
-  pn_tok_b <- str_split(trimws(pn_b), " ")[[1]]
+  fn_tok_a     <- str_split(trimws(fn_a), " ")[[1]]
+  fn_tok_b     <- str_split(trimws(fn_b), " ")[[1]]
+  fn_identical <- fn_a == fn_b
+  fn_missing   <- !fn_identical &&
+    length(fn_tok_a) != length(fn_tok_b) &&
+    (all(fn_tok_a %in% fn_tok_b) || all(fn_tok_b %in% fn_tok_a))
+  fn_typo      <- !fn_identical && !fn_missing &&
+    !is.na(jw_fn) && jw_fn <= 0.1
 
-  pn_identico <- pn_a == pn_b
-  pn_faltando <- !pn_identico &&
-                 length(pn_tok_a) != length(pn_tok_b) &&
-                 (all(pn_tok_a %in% pn_tok_b) || all(pn_tok_b %in% pn_tok_a))
-  pn_typo     <- !pn_identico && !pn_faltando && !is.na(jw_pn) && jw_pn <= 0.1
-
-  # ── todas as combinações (3 pn × 4 sob) ─────────────────────────────────────
   dplyr::case_when(
-    pn_identico & sob_identico   ~ "pn_identico_sob_identico",
-    pn_identico & sob_reordenado ~ "pn_identico_sob_reordenado",
-    pn_identico & sob_faltando   ~ "pn_identico_sob_faltando",
-    pn_identico & sob_typo       ~ "pn_identico_sob_typo",
-    pn_faltando & sob_identico   ~ "pn_faltando_sob_identico",
-    pn_faltando & sob_reordenado ~ "pn_faltando_sob_reordenado",
-    pn_faltando & sob_faltando   ~ "pn_faltando_sob_faltando",
-    pn_faltando & sob_typo       ~ "pn_faltando_sob_typo",
-    pn_typo     & sob_identico   ~ "pn_typo_sob_identico",
-    pn_typo     & sob_reordenado ~ "pn_typo_sob_reordenado",
-    pn_typo     & sob_faltando   ~ "pn_typo_sob_faltando",
-    pn_typo     & sob_typo       ~ "pn_typo_sob_typo",
-    TRUE                         ~ "no_match"
+    fn_identical & sur_identical  ~ "fn_identical_sur_identical",
+    fn_identical & sur_reordered  ~ "fn_identical_sur_reordered",
+    fn_identical & sur_missing    ~ "fn_identical_sur_missing",
+    fn_identical & sur_typo       ~ "fn_identical_sur_typo",
+    fn_missing   & sur_identical  ~ "fn_missing_sur_identical",
+    fn_missing   & sur_reordered  ~ "fn_missing_sur_reordered",
+    fn_missing   & sur_missing    ~ "fn_missing_sur_missing",
+    fn_missing   & sur_typo       ~ "fn_missing_sur_typo",
+    fn_typo      & sur_identical  ~ "fn_typo_sur_identical",
+    fn_typo      & sur_reordered  ~ "fn_typo_sur_reordered",
+    fn_typo      & sur_missing    ~ "fn_typo_sur_missing",
+    fn_typo      & sur_typo       ~ "fn_typo_sur_typo",
+    TRUE                          ~ "no_match"
   )
 }
 
-# ── Função principal ──────────────────────────────────────────────────────────
-
 #' Link two vectors of names
 #'
-#' @param nomes_a      Character vector — nomes originais (base de origem)
-#' @param nomes_b      Character vector — nomes candidatos a match
-#' @param link_by      Vetor de variáveis de ligação para reduzir a matriz.
-#'                     Valores possíveis (podem ser combinados):
-#'                     "first_letters", "first_name", "date_birth", "sex"
-#' @param n_letters    Nº de letras iniciais quando "first_letters" está em link_by (padrão: 1)
-#' @param date_birth_a Vetor de datas de nascimento para nomes_a (obrigatório se "date_birth" em link_by)
-#' @param date_birth_b Vetor de datas de nascimento para nomes_b (obrigatório se "date_birth" em link_by)
-#' @param sex_a        Vetor de sexo para nomes_a (obrigatório se "sex" em link_by)
-#' @param sex_b        Vetor de sexo para nomes_b (obrigatório se "sex" em link_by)
+#' @param names_a      Character vector of names (source dataset)
+#' @param names_b      Character vector of names (target dataset)
+#' @param link_by      Blocking variables. Options: "first_letters",
+#'                     "first_name", "date_birth", "sex"
+#' @param n_letters    Number of leading letters for "first_letters" blocking
+#' @param date_birth_a Date of birth vector for names_a
+#' @param date_birth_b Date of birth vector for names_b
+#' @param sex_a        Sex vector for names_a
+#' @param sex_b        Sex vector for names_b
 #'
-#' @return data.frame com uma linha por nome em nomes_a (melhor match)
-link_names <- function(nomes_a, nomes_b,
+#' @return data.frame with one row per name in names_a (best match)
+link_names <- function(names_a, names_b,
                        link_by      = "first_letters",
                        n_letters    = 1,
                        date_birth_a = NULL,
@@ -87,29 +85,65 @@ link_names <- function(nomes_a, nomes_b,
   valid_link_by <- c("first_letters", "first_name", "date_birth", "sex")
   unknown <- setdiff(link_by, valid_link_by)
   if (length(unknown) > 0)
-    stop("link_by inválido: ", paste(unknown, collapse = ", "),
-         ". Opções: ", paste(valid_link_by, collapse = ", "))
+    stop("Invalid link_by: ", paste(unknown, collapse = ", "),
+         ". Options: ", paste(valid_link_by, collapse = ", "))
 
-  if ("date_birth" %in% link_by && (is.null(date_birth_a) || is.null(date_birth_b)))
-    stop("date_birth_a e date_birth_b são obrigatórios quando link_by inclui 'date_birth'")
+  if ("date_birth" %in% link_by &&
+        (is.null(date_birth_a) || is.null(date_birth_b)))
+    stop("date_birth_a and date_birth_b required when ",
+         "link_by includes 'date_birth'")
 
   if ("sex" %in% link_by && (is.null(sex_a) || is.null(sex_b)))
-    stop("sex_a e sex_b são obrigatórios quando link_by inclui 'sex'")
+    stop("sex_a and sex_b required when link_by includes 'sex'")
 
-  # 1. Parsear nomes
-  parsed_a <- bind_rows(lapply(nomes_a, parse_name))
-  parsed_b <- bind_rows(lapply(nomes_b, parse_name))
+  # --- format checks --------------------------------------------------------
+  if ("date_birth" %in% link_by) {
+    cls_a <- class(date_birth_a)
+    cls_b <- class(date_birth_b)
+    if (!identical(cls_a, cls_b))
+      stop("date_birth_a and date_birth_b have different classes: ",
+           paste(cls_a, collapse = "/"), " vs ", paste(cls_b, collapse = "/"),
+           ". Convert both to the same type before linking.")
 
-  # 2. Adicionar variáveis externas e construir chaves de ligação
+    if (inherits(date_birth_a, "character")) {
+      sample_a <- na.omit(date_birth_a)[1]
+      sample_b <- na.omit(date_birth_b)[1]
+      fmt_a <- if (grepl("^\\d{4}-\\d{2}-\\d{2}$", sample_a)) "YYYY-MM-DD"
+        else if (grepl("^\\d{2}/\\d{2}/\\d{4}$", sample_a)) "DD/MM/YYYY"
+        else "unknown"
+      fmt_b <- if (grepl("^\\d{4}-\\d{2}-\\d{2}$", sample_b)) "YYYY-MM-DD"
+        else if (grepl("^\\d{2}/\\d{2}/\\d{4}$", sample_b)) "DD/MM/YYYY"
+        else "unknown"
+      if (fmt_a != fmt_b)
+        stop("date_birth_a and date_birth_b appear to use different formats: ",
+             fmt_a, " vs ", fmt_b, ". Standardise both before linking.")
+    }
+  }
+
+  if ("sex" %in% link_by) {
+    vals_a <- sort(unique(na.omit(sex_a)))
+    vals_b <- sort(unique(na.omit(sex_b)))
+    if (!identical(vals_a, vals_b))
+      warning("sex_a and sex_b have different value sets: ",
+              "(", paste(vals_a, collapse = ", "), ")",
+              " vs ",
+              "(", paste(vals_b, collapse = ", "), ")",
+              ". No pairs will match across mismatched categories.")
+  }
+  # --------------------------------------------------------------------------
+
+  parsed_a <- bind_rows(lapply(names_a, parse_name))
+  parsed_b <- bind_rows(lapply(names_b, parse_name))
+
   join_keys <- character(0)
 
   if ("first_letters" %in% link_by) {
-    parsed_a$name_key <- substr(parsed_a$primeiro_nome, 1, n_letters)
-    parsed_b$name_key <- substr(parsed_b$primeiro_nome, 1, n_letters)
+    parsed_a$name_key <- substr(parsed_a$first_name, 1, n_letters)
+    parsed_b$name_key <- substr(parsed_b$first_name, 1, n_letters)
     join_keys <- c(join_keys, "name_key")
   } else if ("first_name" %in% link_by) {
-    parsed_a$name_key <- parsed_a$primeiro_nome
-    parsed_b$name_key <- parsed_b$primeiro_nome
+    parsed_a$name_key <- parsed_a$first_name
+    parsed_b$name_key <- parsed_b$first_name
     join_keys <- c(join_keys, "name_key")
   }
 
@@ -125,58 +159,57 @@ link_names <- function(nomes_a, nomes_b,
     join_keys <- c(join_keys, "sex")
   }
 
-  # 3. Matriz cruzada filtrada
-  pares <- inner_join(parsed_a, parsed_b, by = join_keys, suffix = c("_a", "_b"),
-                      relationship = "many-to-many")
+  pairs <- inner_join(
+    parsed_a, parsed_b,
+    by           = join_keys,
+    suffix       = c("_a", "_b"),
+    relationship = "many-to-many"
+  )
 
-  # 4. Similaridade e classificação
-  scored <- pares |>
+  scored <- pairs |>
     rowwise() |>
     mutate(
-      jw_primeiro_nome = jw_first(primeiro_nome_a, primeiro_nome_b),
-      jw_sobrenomes    = jw_surnames(sobrenomes_a, sobrenomes_b),
-      classificacao    = classify_match(
-        primeiro_nome_a, sobrenomes_a,
-        primeiro_nome_b, sobrenomes_b,
-        jw_primeiro_nome, jw_sobrenomes
+      jw_first_name  = jw_first(first_name_a, first_name_b),
+      jw_surnames    = jw_surnames(surnames_a, surnames_b),
+      classification = classify_match(
+        first_name_a, surnames_a,
+        first_name_b, surnames_b,
+        jw_first_name, jw_surnames
       )
     ) |>
     ungroup()
 
-  # 5. Melhor match por nome original
-  classificacao_ordem <- c(
-    "pn_identico_sob_identico",    # 1 — match perfeito
-    "pn_identico_sob_reordenado",  # 2
-    "pn_identico_sob_faltando",    # 3
-    "pn_identico_sob_typo",        # 4
-    "pn_faltando_sob_identico",    # 5
-    "pn_typo_sob_identico",        # 6
-    "pn_faltando_sob_reordenado",  # 7
-    "pn_typo_sob_reordenado",      # 8
-    "pn_faltando_sob_faltando",    # 9
-    "pn_typo_sob_faltando",        # 10
-    "pn_faltando_sob_typo",        # 11
-    "pn_typo_sob_typo"             # 12 — mais incerto
+  class_order <- c(
+    "fn_identical_sur_identical",
+    "fn_identical_sur_reordered",
+    "fn_identical_sur_missing",
+    "fn_identical_sur_typo",
+    "fn_missing_sur_identical",
+    "fn_typo_sur_identical",
+    "fn_missing_sur_reordered",
+    "fn_typo_sur_reordered",
+    "fn_missing_sur_missing",
+    "fn_typo_sur_missing",
+    "fn_missing_sur_typo",
+    "fn_typo_sur_typo"
   )
 
   scored |>
-    filter(!.data$classificacao %in% c("no_match", "pn_typo_sob_typo")) |>
-    mutate(ordem_class = match(.data$classificacao, classificacao_ordem)) |>
-    arrange(.data$ordem_class, .data$jw_primeiro_nome, .data$jw_sobrenomes) |>
-    group_by(.data$nome_original_a) |>
+    filter(!.data$classification %in% c("no_match", "fn_typo_sur_typo")) |>
+    mutate(class_rank = match(.data$classification, class_order)) |>
+    arrange(.data$class_rank, .data$jw_first_name, .data$jw_surnames) |>
+    group_by(.data$original_a) |>
     slice(1) |>
     ungroup() |>
     select(
-      nome_original          = "nome_original_a",
-      nome_melhor_match      = "nome_original_b",
-      primeiro_nome_original = "primeiro_nome_a",
-      primeiro_nome_match    = "primeiro_nome_b",
-      sobrenomes_original    = "sobrenomes_a",
-      sobrenomes_match       = "sobrenomes_b",
-      classificacao          = "classificacao",
-      jw_primeiro_nome       = "jw_primeiro_nome",
-      jw_sobrenomes          = "jw_sobrenomes"
+      original         = "original_a",
+      best_match       = "original_b",
+      first_name       = "first_name_a",
+      first_name_match = "first_name_b",
+      surnames         = "surnames_a",
+      surnames_match   = "surnames_b",
+      classification   = "classification",
+      jw_first_name    = "jw_first_name",
+      jw_surnames      = "jw_surnames"
     )
 }
-
-
