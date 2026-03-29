@@ -2,18 +2,40 @@ library(data.table)
 library(stringi)
 library(stringr)
 
+utils::globalVariables(c(
+  "ibge_nomes", "ibge_sobrenomes", "frequencia", "freq_relativa", "nome_upper"
+))
+
 # ── Constantes ────────────────────────────────────────────────────────────────
 PARTICLES <- c("DE", "DA", "DO", "DOS", "DAS", "E", "DI", "DU", "VAN", "VON")
 PARTICLE_PATTERN <- paste0("\\b(", paste(PARTICLES, collapse = "|"), ")\\b")
 
-FIRST_NAME_FREQ_THRESHOLD <- 200
-SURNAME_COMPOUND_THRESHOLD <- 200
+# Thresholds em frequência relativa (proporção da população)
+# Equivale a ~1 pessoa em 1 milhão — separa nomes raríssimos de incomuns
+FIRST_NAME_FREQ_THRESHOLD  <- 1e-6
+SURNAME_COMPOUND_THRESHOLD <- 1e-6
 
 # ── Carregar dados IBGE ───────────────────────────────────────────────────────
-load(system.file("../data/ibge_nomes.rda",      package = "reclink", mustWork = TRUE))
-load(system.file("../data/ibge_sobrenomes.rda", package = "reclink", mustWork = TRUE))
+.pkg_data_dir <- function() {
+  # Pacote instalado: system.file retorna o caminho correto
+  path <- system.file("data", package = "reclink")
+  if (nchar(path) > 0) return(path)
+  # Desenvolvimento (source): sobe a árvore até encontrar DESCRIPTION
+  wd <- normalizePath(".")
+  while (nchar(wd) > 3) {
+    if (file.exists(file.path(wd, "DESCRIPTION"))) return(file.path(wd, "data"))
+    wd <- dirname(wd)
+  }
+  stop("Não foi possível localizar a pasta data/ do pacote reclink.")
+}
 
-first_names_set <- ibge_nomes[frequencia >= FIRST_NAME_FREQ_THRESHOLD, nome_upper]
+load(file.path(.pkg_data_dir(), "ibge_nomes.rda"))
+load(file.path(.pkg_data_dir(), "ibge_sobrenomes.rda"))
+
+ibge_nomes[, freq_relativa := frequencia / sum(frequencia)]
+ibge_sobrenomes[, freq_relativa := frequencia / sum(frequencia)]
+
+first_names_set <- ibge_nomes[freq_relativa >= FIRST_NAME_FREQ_THRESHOLD, nome_upper]
 
 # ── Funções ───────────────────────────────────────────────────────────────────
 normalize <- function(x) {
@@ -33,7 +55,7 @@ remove_particles <- function(x) {
 #   - é sobrenome raro (freq < SURNAME_COMPOUND_THRESHOLD), OU
 #   - é primeiro nome comum (freq >= FIRST_NAME_FREQ_THRESHOLD)
 is_compound_token <- function(token) {
-  freq_sob <- ibge_sobrenomes$frequencia[ibge_sobrenomes$nome_upper == token]
+  freq_sob <- ibge_sobrenomes$freq_relativa[ibge_sobrenomes$nome_upper == token]
   is_rare_surname  <- length(freq_sob) == 0 || freq_sob < SURNAME_COMPOUND_THRESHOLD
   is_common_fname  <- token %in% first_names_set
   is_rare_surname || is_common_fname
