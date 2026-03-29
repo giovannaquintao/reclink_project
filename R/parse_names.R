@@ -27,9 +27,8 @@ compound_threshold <- 0.5  # min % of population to treat token as a first name
     data.table::setnames(.pkg_env$ibge_nomes,      "nome_upper", "name_upper")
   if ("nome_upper" %in% names(.pkg_env$ibge_sobrenomes))
     data.table::setnames(.pkg_env$ibge_sobrenomes, "nome_upper", "name_upper")
-  .pkg_env$ibge_nomes[,
-    freq_pct := 100 * frequencia / sum(frequencia)
-  ]
+  .pkg_env$ibge_nomes[["freq_pct"]] <-
+    100 * .pkg_env$ibge_nomes[["frequencia"]] / sum(.pkg_env$ibge_nomes[["frequencia"]])
 }
 
 normalize <- function(x) {
