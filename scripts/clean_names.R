@@ -8,22 +8,33 @@ gc()
 source("c:/projects/reclink_project/R/parse_names.R")
 source("c:/projects/reclink_project/R/link_names.R")
 
-# ── 1. Carregar nomes ─────────────────────────────────────────────────────────
-pe_de_meia <- data.table::fread(
-  "C:/Users/giova/OneDrive/raw_data/inep/pe_de_meia/2025_new/202501_PeDeMeia.csv",
-  encoding = "Latin-1", select = "NOME BENEFICIÁRIO")
+# ── 1. Carregar dados de teste ────────────────────────────────────────────────
+dataset_a <- read.csv("c:/projects/reclink_project/data/test/dataset_a.csv",
+                      stringsAsFactors = FALSE)
+dataset_b <- read.csv("c:/projects/reclink_project/data/test/dataset_b.csv",
+                      stringsAsFactors = FALSE)
 
-bolsa_familia <- data.table::fread(
-  "C:/Users/giova/OneDrive/raw_data/bolsa_familia/202101_BolsaFamilia_Pagamentos.csv",
-  encoding = "Latin-1", select = "NOME FAVORECIDO")
-
-nomes_pdm <- unique(pe_de_meia[["NOME BENEFICIÁRIO"]])
-nomes_bf  <- unique(bolsa_familia[["NOME FAVORECIDO"]])
-nomes_pdm <- nomes_pdm[!is.na(nomes_pdm) & nchar(trimws(nomes_pdm)) > 0]
-nomes_bf  <- nomes_bf[!is.na(nomes_bf)   & nchar(trimws(nomes_bf))  > 0]
-
-# ── 2. Linkar ─────────────────────────────────────────────────────────────────
-
-resultado <- link_names(nomes_pdm, nomes_bf, link_by = "first_name")
+# ── 2. Linkar apenas por nome ─────────────────────────────────────────────────
+resultado <- link_names(
+  nomes_a = dataset_a$nome,
+  nomes_b = dataset_b$nome,
+  link_by = "first_letters",
+  n_letters = 1
+)
 
 table(resultado$classificacao)
+View(resultado)
+
+# ── 3. Linkar por nome + data de nascimento + sexo ───────────────────────────
+resultado_completo <- link_names(
+  nomes_a      = dataset_a$nome,
+  nomes_b      = dataset_b$nome,
+  link_by      = c("first_letters", "date_birth", "sex"),
+  n_letters    = 1,
+  date_birth_a = dataset_a$data_nascimento,
+  date_birth_b = dataset_b$data_nascimento,
+  sex_a        = dataset_a$sexo,
+  sex_b        = dataset_b$sexo
+)
+
+table(resultado_completo$classificacao)

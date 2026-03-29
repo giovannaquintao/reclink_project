@@ -10,12 +10,10 @@ FIRST_NAME_FREQ_THRESHOLD <- 200
 SURNAME_COMPOUND_THRESHOLD <- 200
 
 # ── Carregar dados IBGE ───────────────────────────────────────────────────────
-ibge_nomes <- fread("C:/Users/giova/OneDrive/raw_data/ibge/names/ibge_nomes_2010.csv")
-ibge_nomes[, nome_upper := toupper(nome)]
-first_names_set <- ibge_nomes[frequencia >= FIRST_NAME_FREQ_THRESHOLD, nome_upper]
+load(system.file("../data/ibge_nomes.rda",      package = "reclink", mustWork = TRUE))
+load(system.file("../data/ibge_sobrenomes.rda", package = "reclink", mustWork = TRUE))
 
-ibge_sobrenomes <- fread("C:/Users/giova/OneDrive/raw_data/ibge/names/ibge_sobrenomes_2022.csv")
-ibge_sobrenomes <- ibge_sobrenomes[, .(nome_upper = toupper(items.nome), frequencia = items.frequencia)]
+first_names_set <- ibge_nomes[frequencia >= FIRST_NAME_FREQ_THRESHOLD, nome_upper]
 
 # ── Funções ───────────────────────────────────────────────────────────────────
 normalize <- function(x) {
