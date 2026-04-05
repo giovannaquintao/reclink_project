@@ -18,6 +18,8 @@ dataset_b <- read.csv("c:/projects/reclink_project/data/test/dataset_b.csv",
 result <- link_names(
   names_a   = dataset_a$nome,
   names_b   = dataset_b$nome,
+  id_a      = dataset_a$id,
+  id_b      = dataset_b$id,
   link_by   = "first_letters",
   n_letters = 1
 )
@@ -29,6 +31,8 @@ View(result)
 result_full <- link_names(
   names_a      = dataset_a$nome,
   names_b      = dataset_b$nome,
+  id_a         = dataset_a$id,
+  id_b         = dataset_b$id,
   link_by      = c("first_letters", "date_birth", "sex"),
   n_letters    = 1,
   date_birth_a = dataset_a$data_nascimento,

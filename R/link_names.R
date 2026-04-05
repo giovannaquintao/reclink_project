@@ -96,6 +96,8 @@ classify_match <- function(fn_a, sur_a, fn_b, sur_b, jw_fn, jw_sur) {
 #' @param link_by      Blocking variables. Options: "first_letters",
 #'                     "first_name", "date_birth", "sex"
 #' @param n_letters    Number of leading letters for "first_letters" blocking
+#' @param id_a         Identifier vector for names_a (e.g. dataset_a$id)
+#' @param id_b         Identifier vector for names_b (e.g. dataset_b$id)
 #' @param date_birth_a Date of birth vector for names_a
 #' @param date_birth_b Date of birth vector for names_b
 #' @param sex_a        Sex vector for names_a
@@ -103,6 +105,8 @@ classify_match <- function(fn_a, sur_a, fn_b, sur_b, jw_fn, jw_sur) {
 #'
 #' @return data.frame with one row per name in names_a (best match)
 link_names <- function(names_a, names_b,
+                       id_a         = NULL,
+                       id_b         = NULL,
                        link_by      = "first_letters",
                        n_letters    = 1,
                        date_birth_a = NULL,
@@ -162,6 +166,9 @@ link_names <- function(names_a, names_b,
 
   parsed_a <- bind_rows(lapply(names_a, parse_name))
   parsed_b <- bind_rows(lapply(names_b, parse_name))
+
+  if (!is.null(id_a)) parsed_a$id <- id_a
+  if (!is.null(id_b)) parsed_b$id <- id_b
 
   join_keys <- character(0)
 
@@ -232,6 +239,7 @@ link_names <- function(names_a, names_b,
     slice(1) |>
     ungroup() |>
     select(
+      any_of(c(id_a = "id_a", id_b = "id_b")),
       original             = "original_a",
       best_match           = "original_b",
       first_name           = "first_name_a",
