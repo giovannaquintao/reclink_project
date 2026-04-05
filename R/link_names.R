@@ -37,6 +37,18 @@ jw_complete <- function(clean_a, clean_b) {
 }
 
 classify_match <- function(fn_a, sur_a, fn_b, sur_b, jw_fn, jw_sur) {
+  # Guard: 2-token names (first name + 1 surname) where all parts are common
+  # are too ambiguous to link — e.g. "ANDRE FERREIRA"
+  sur_a_toks <- split_surnames(sur_a)
+  sur_b_toks <- split_surnames(sur_b)
+  if (length(sur_a_toks) == 1 && length(sur_b_toks) == 1) {
+    fn_a_first <- str_split(trimws(fn_a), " ")[[1]][1]
+    fn_b_first <- str_split(trimws(fn_b), " ")[[1]][1]
+    if (is_common_firstname(fn_a_first) && is_common_firstname(fn_b_first) &&
+        is_common_surname(sur_a_toks[1]) && is_common_surname(sur_b_toks[1]))
+      return("no_match")
+  }
+
   tok_a_raw <- split_surnames(sur_a)
   tok_b_raw <- split_surnames(sur_b)
   tok_a     <- sort(tok_a_raw)
@@ -44,8 +56,10 @@ classify_match <- function(fn_a, sur_a, fn_b, sur_b, jw_fn, jw_sur) {
 
   sur_identical <- identical(tok_a_raw, tok_b_raw)
   sur_reordered <- identical(tok_a, tok_b) && !sur_identical
+  shared        <- intersect(tok_a, tok_b)
   sur_missing   <- length(tok_a) != length(tok_b) &&
-    (all(tok_a %in% tok_b) || all(tok_b %in% tok_a))
+    (all(tok_a %in% tok_b) || all(tok_b %in% tok_a)) &&
+    has_rare_surname(shared)
   sur_typo      <- !sur_identical && !sur_reordered && !sur_missing &&
     !is.na(jw_sur) && jw_sur <= 0.15
 

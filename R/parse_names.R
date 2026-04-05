@@ -1,5 +1,6 @@
 utils::globalVariables(c(
-  "ibge_nomes", "ibge_sobrenomes", "frequencia", "freq_pct", "name_upper"
+  "ibge_nomes", "ibge_sobrenomes", "frequencia", "freq_pct", "name_upper",
+  "rare_surname_threshold"
 ))
 
 PARTICLES <- c("DE", "DA", "DO", "DOS", "DAS", "E", "DI", "DU", "VAN", "VON")
@@ -47,6 +48,32 @@ strip_particles <- function(x) {
 is_compound_token <- function(token) {
   pct <- .pkg_env$ibge_nomes$freq_pct[.pkg_env$ibge_nomes$name_upper == token]
   length(pct) > 0 && pct >= compound_threshold
+}
+
+common_firstname_threshold <- 1.0  # % of population — first names above this are "common"
+rare_surname_threshold     <- 0.1  # % of population — surnames below this are "rare"
+
+is_common_firstname <- function(token) {
+  pct <- .pkg_env$ibge_nomes$freq_pct[.pkg_env$ibge_nomes$name_upper == token]
+  length(pct) > 0 && pct >= common_firstname_threshold
+}
+
+is_common_surname <- function(token) {
+  freq  <- .pkg_env$ibge_sobrenomes$frequencia[
+    .pkg_env$ibge_sobrenomes$name_upper == token
+  ]
+  total <- sum(.pkg_env$ibge_sobrenomes$frequencia)
+  length(freq) > 0 && (100 * freq / total) >= rare_surname_threshold
+}
+
+has_rare_surname <- function(tokens) {
+  if (length(tokens) == 0) return(FALSE)
+  freqs <- .pkg_env$ibge_sobrenomes$frequencia[
+    .pkg_env$ibge_sobrenomes$name_upper %in% tokens
+  ]
+  total <- sum(.pkg_env$ibge_sobrenomes$frequencia)
+  pcts  <- 100 * freqs / total
+  any(pcts < rare_surname_threshold) || length(freqs) == 0
 }
 
 parse_name <- function(name) {
