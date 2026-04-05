@@ -3,7 +3,9 @@ library(stringr)
 library(stringdist)
 
 utils::globalVariables(c(
-  "first_name_a", "first_name_b", "surnames_a", "surnames_b", "jw_first_name"
+  "first_name_a", "first_name_b", "surnames_a", "surnames_b",
+  "clean_surnames_a", "clean_surnames_b", "clean_a", "clean_b",
+  "jw_first_name"
 ))
 
 split_surnames <- function(surnames) {
@@ -14,7 +16,7 @@ jw_first <- function(a, b) {
   stringdist(a, b, method = "jw", p = 0.1)
 }
 
-jw_surnames <- function(sur_a, sur_b) {
+jw_mean_surnames <- function(sur_a, sur_b) {
   tok_a <- split_surnames(sur_a)
   tok_b <- split_surnames(sur_b)
   if (length(tok_a) == 0 || length(tok_b) == 0) return(NA_real_)
@@ -24,12 +26,24 @@ jw_surnames <- function(sur_a, sur_b) {
   mean(scores)
 }
 
-classify_match <- function(fn_a, sur_a, fn_b, sur_b, jw_fn, jw_sur) {
-  tok_a <- sort(split_surnames(sur_a))
-  tok_b <- sort(split_surnames(sur_b))
+jw_complete_surnames <- function(clean_sur_a, clean_sur_b) {
+  if (is.na(clean_sur_a) || is.na(clean_sur_b)) return(NA_real_)
+  stringdist(clean_sur_a, clean_sur_b, method = "jw", p = 0.1)
+}
 
-  sur_identical <- identical(tok_a, tok_b)
-  sur_reordered <- setequal(tok_a, tok_b) && !sur_identical
+jw_complete <- function(clean_a, clean_b) {
+  if (is.na(clean_a) || is.na(clean_b)) return(NA_real_)
+  stringdist(clean_a, clean_b, method = "jw", p = 0.1)
+}
+
+classify_match <- function(fn_a, sur_a, fn_b, sur_b, jw_fn, jw_sur) {
+  tok_a_raw <- split_surnames(sur_a)
+  tok_b_raw <- split_surnames(sur_b)
+  tok_a     <- sort(tok_a_raw)
+  tok_b     <- sort(tok_b_raw)
+
+  sur_identical <- identical(tok_a_raw, tok_b_raw)
+  sur_reordered <- identical(tok_a, tok_b) && !sur_identical
   sur_missing   <- length(tok_a) != length(tok_b) &&
     (all(tok_a %in% tok_b) || all(tok_b %in% tok_a))
   sur_typo      <- !sur_identical && !sur_reordered && !sur_missing &&
@@ -169,12 +183,14 @@ link_names <- function(names_a, names_b,
   scored <- pairs |>
     rowwise() |>
     mutate(
-      jw_first_name  = jw_first(first_name_a, first_name_b),
-      jw_surnames    = jw_surnames(surnames_a, surnames_b),
-      classification = classify_match(
+      jw_first_name        = jw_first(first_name_a, first_name_b),
+      jw_mean_surnames     = jw_mean_surnames(surnames_a, surnames_b),
+      jw_complete_surnames = jw_complete_surnames(clean_surnames_a, clean_surnames_b),
+      jw_complete          = jw_complete(clean_a, clean_b),
+      classification       = classify_match(
         first_name_a, surnames_a,
         first_name_b, surnames_b,
-        jw_first_name, jw_surnames
+        jw_first_name, jw_mean_surnames
       )
     ) |>
     ungroup()
@@ -197,19 +213,21 @@ link_names <- function(names_a, names_b,
   scored |>
     filter(!.data$classification %in% c("no_match", "fn_typo_sur_typo")) |>
     mutate(class_rank = match(.data$classification, class_order)) |>
-    arrange(.data$class_rank, .data$jw_first_name, .data$jw_surnames) |>
+    arrange(.data$class_rank, .data$jw_first_name, .data$jw_mean_surnames) |>
     group_by(.data$original_a) |>
     slice(1) |>
     ungroup() |>
     select(
-      original         = "original_a",
-      best_match       = "original_b",
-      first_name       = "first_name_a",
-      first_name_match = "first_name_b",
-      surnames         = "surnames_a",
-      surnames_match   = "surnames_b",
-      classification   = "classification",
-      jw_first_name    = "jw_first_name",
-      jw_surnames      = "jw_surnames"
+      original             = "original_a",
+      best_match           = "original_b",
+      first_name           = "first_name_a",
+      first_name_match     = "first_name_b",
+      surnames             = "surnames_a",
+      surnames_match       = "surnames_b",
+      classification       = "classification",
+      jw_first_name        = "jw_first_name",
+      jw_mean_surnames     = "jw_mean_surnames",
+      jw_complete_surnames = "jw_complete_surnames",
+      jw_complete          = "jw_complete"
     )
 }

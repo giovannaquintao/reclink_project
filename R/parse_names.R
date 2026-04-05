@@ -66,19 +66,31 @@ parse_name <- function(name) {
   }
 
   if (length(tokens) >= 2 && is_compound_token(tokens[2])) {
-    first_name    <- paste(tokens[1], tokens[2])
+    first_name     <- paste(tokens[1], tokens[2])
     surname_tokens <- tokens[-(1:2)]
   } else {
-    first_name    <- tokens[1]
+    first_name     <- tokens[1]
     surname_tokens <- tokens[-1]
   }
 
+  fn_word_count <- length(str_split(first_name, " ")[[1]])
+  clean_tokens  <- str_split(clean, " ")[[1]]
+  if (fn_word_count >= length(clean_tokens)) {
+    clean_surnames <- NA_character_
+  } else {
+    clean_surnames <- paste(
+      clean_tokens[(fn_word_count + 1):length(clean_tokens)],
+      collapse = " "
+    )
+  }
+
   list(
-    original   = name,
-    clean      = clean,
-    first_name = first_name,
-    surnames   = if (length(surname_tokens) == 0) NA_character_
-    else paste(surname_tokens, collapse = " "),
-    n_surnames = length(surname_tokens)
+    original       = name,
+    clean          = clean,
+    first_name     = first_name,
+    surnames       = if (length(surname_tokens) == 0) NA_character_
+      else paste(surname_tokens, collapse = " "),
+    clean_surnames = clean_surnames,
+    n_surnames     = length(surname_tokens)
   )
 }
