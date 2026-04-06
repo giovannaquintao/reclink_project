@@ -28,8 +28,9 @@ compound_threshold <- 0.5  # min % of population to treat token as a first name
     data.table::setnames(.pkg_env$ibge_nomes,      "nome_upper", "name_upper")
   if ("nome_upper" %in% names(.pkg_env$ibge_sobrenomes))
     data.table::setnames(.pkg_env$ibge_sobrenomes, "nome_upper", "name_upper")
+  total <- sum(.pkg_env$ibge_nomes[["frequencia"]])
   .pkg_env$ibge_nomes[["freq_pct"]] <-
-    100 * .pkg_env$ibge_nomes[["frequencia"]] / sum(.pkg_env$ibge_nomes[["frequencia"]])
+    100 * .pkg_env$ibge_nomes[["frequencia"]] / total
 }
 
 normalize <- function(x) {
@@ -50,8 +51,10 @@ is_compound_token <- function(token) {
   length(pct) > 0 && pct >= compound_threshold
 }
 
-common_firstname_threshold <- 1.0  # % of population — first names above this are "common"
-rare_surname_threshold     <- 0.1  # % of population — surnames below this are "rare"
+# % of population — first names above this are "common"
+common_firstname_threshold <- 1.0
+# % of population — surnames below this are "rare"
+rare_surname_threshold     <- 0.1
 
 is_common_firstname <- function(token) {
   pct <- .pkg_env$ibge_nomes$freq_pct[.pkg_env$ibge_nomes$name_upper == token]
@@ -64,6 +67,28 @@ is_common_surname <- function(token) {
   ]
   total <- sum(.pkg_env$ibge_sobrenomes$frequencia)
   length(freq) > 0 && (100 * freq / total) >= rare_surname_threshold
+}
+
+is_known_surname <- function(token) {
+  token %in% .pkg_env$ibge_sobrenomes$name_upper
+}
+
+# Returns TRUE if any near-match token pair are both recognized surnames
+# AND their JW distance is above strict_threshold.
+# If JW <= strict_threshold, treat as typo even if both are known surnames
+# (e.g. SOUSA/SOUZA, RODRIGUES/RODRIGES).
+any_known_surname_pair <- function(tok_a, tok_b,
+                                   threshold        = 0.15,
+                                   strict_threshold = 0.05) {
+  for (ta in tok_a) {
+    dists   <- stringdist::stringdist(ta, tok_b, method = "jw", p = 0.1)
+    min_d   <- min(dists)
+    closest <- tok_b[which.min(dists)]
+    if (min_d > strict_threshold && min_d <= threshold &&
+        is_known_surname(ta) && is_known_surname(closest))
+      return(TRUE)
+  }
+  FALSE
 }
 
 has_rare_surname <- function(tokens) {

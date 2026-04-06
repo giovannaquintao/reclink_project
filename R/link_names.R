@@ -57,11 +57,18 @@ classify_match <- function(fn_a, sur_a, fn_b, sur_b, jw_fn, jw_sur) {
   sur_identical <- identical(tok_a_raw, tok_b_raw)
   sur_reordered <- identical(tok_a, tok_b) && !sur_identical
   shared        <- intersect(tok_a, tok_b)
+  extra         <- setdiff(
+    if (length(tok_a) > length(tok_b)) tok_a else tok_b,
+    if (length(tok_a) > length(tok_b)) tok_b else tok_a
+  )
   sur_missing   <- length(tok_a) != length(tok_b) &&
     (all(tok_a %in% tok_b) || all(tok_b %in% tok_a)) &&
-    has_rare_surname(shared)
+    (has_rare_surname(shared) || length(extra) == 1)
   sur_typo      <- !sur_identical && !sur_reordered && !sur_missing &&
-    !is.na(jw_sur) && jw_sur <= 0.15
+    !is.na(jw_sur) && jw_sur <= 0.15 &&
+    !any_known_surname_pair(tok_a, tok_b)
+  sur_different <- !sur_identical && !sur_reordered && !sur_missing &&
+    !sur_typo && length(tok_a) > 0 && length(tok_b) > 0
 
   fn_tok_a     <- str_split(trimws(fn_a), " ")[[1]]
   fn_tok_b     <- str_split(trimws(fn_b), " ")[[1]]
@@ -85,6 +92,9 @@ classify_match <- function(fn_a, sur_a, fn_b, sur_b, jw_fn, jw_sur) {
     fn_typo      & sur_reordered  ~ "fn_typo_sur_reordered",
     fn_typo      & sur_missing    ~ "fn_typo_sur_missing",
     fn_typo      & sur_typo       ~ "fn_typo_sur_typo",
+    fn_identical & sur_different  ~ "fn_identical_sur_different",
+    fn_missing   & sur_different  ~ "fn_missing_sur_different",
+    fn_typo      & sur_different  ~ "fn_typo_sur_different",
     TRUE                          ~ "no_match"
   )
 }
@@ -228,11 +238,15 @@ link_names <- function(names_a, names_b,
     "fn_missing_sur_missing",
     "fn_typo_sur_missing",
     "fn_missing_sur_typo",
-    "fn_typo_sur_typo"
+    "fn_typo_sur_typo",
+    "fn_identical_sur_different",
+    "fn_missing_sur_different",
+    "fn_typo_sur_different"
   )
 
   scored |>
-    filter(!.data$classification %in% c("no_match", "fn_typo_sur_typo")) |>
+    filter(!.data$classification %in% c("no_match", "fn_typo_sur_typo",
+ "fn_missing_sur_different", "fn_typo_sur_different")) |>
     mutate(class_rank = match(.data$classification, class_order)) |>
     arrange(.data$class_rank, .data$jw_first_name, .data$jw_mean_surnames) |>
     group_by(.data$original_a) |>
