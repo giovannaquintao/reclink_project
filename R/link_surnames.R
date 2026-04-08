@@ -1,5 +1,6 @@
 utils::globalVariables(c(
-  "surnames_a", "surnames_b", "clean_sur_a", "clean_sur_b"
+  "surnames_a", "surnames_b", "clean_surnames_a", "clean_surnames_b",
+  "first_name_a", "first_name_b"
 ))
 
 parse_surname_only <- function(surname) {
@@ -52,23 +53,26 @@ classify_surname_match <- function(sur_a, sur_b, jw_sur) {
   )
 }
 
-#' Link two vectors of surnames
+#' Link two vectors of names matching on surnames only
 #'
-#' @param surnames_a   Character vector of surnames (source dataset)
+#' Parses full names and matches records based on surnames only,
+#' ignoring the first name.
+#'
+#' @param names_a      Character vector of full names (source dataset)
 #' @export
-#' @param surnames_b   Character vector of surnames (target dataset)
-#' @param id_a         Identifier vector for surnames_a
-#' @param id_b         Identifier vector for surnames_b
+#' @param names_b      Character vector of full names (target dataset)
+#' @param id_a         Identifier vector for names_a
+#' @param id_b         Identifier vector for names_b
 #' @param link_by      Blocking variables. Options: "first_letters",
 #'                     "date_birth", "sex"
 #' @param n_letters    Number of leading letters for "first_letters" blocking
-#' @param date_birth_a Date of birth vector for surnames_a
-#' @param date_birth_b Date of birth vector for surnames_b
-#' @param sex_a        Sex vector for surnames_a
-#' @param sex_b        Sex vector for surnames_b
+#' @param date_birth_a Date of birth vector for names_a
+#' @param date_birth_b Date of birth vector for names_b
+#' @param sex_a        Sex vector for names_a
+#' @param sex_b        Sex vector for names_b
 #'
-#' @return data.frame with one row per surname in surnames_a (best match)
-link_surnames <- function(surnames_a, surnames_b,
+#' @return data.frame with one row per name in names_a (best match)
+link_surnames <- function(names_a, names_b,
                           id_a         = NULL,
                           id_b         = NULL,
                           link_by      = "first_letters",
@@ -125,8 +129,8 @@ link_surnames <- function(surnames_a, surnames_b,
   }
   # --------------------------------------------------------------------------
 
-  parsed_a <- bind_rows(lapply(surnames_a, parse_surname_only))
-  parsed_b <- bind_rows(lapply(surnames_b, parse_surname_only))
+  parsed_a <- bind_rows(lapply(names_a, parse_name))
+  parsed_b <- bind_rows(lapply(names_b, parse_name))
 
   if (!is.null(id_a)) parsed_a$id <- id_a
   if (!is.null(id_b)) parsed_b$id <- id_b
@@ -162,7 +166,7 @@ link_surnames <- function(surnames_a, surnames_b,
     rowwise() |>
     mutate(
       jw_mean_surnames     = jw_mean_surnames(surnames_a, surnames_b),
-      jw_complete_surnames = jw_complete_surnames(clean_sur_a, clean_sur_b),
+      jw_complete_surnames = jw_complete_surnames(clean_surnames_a, clean_surnames_b),
       classification       = classify_surname_match(
         surnames_a, surnames_b, jw_mean_surnames
       )
@@ -197,6 +201,8 @@ link_surnames <- function(surnames_a, surnames_b,
       any_of(c(id_a = "id_a", id_b = "id_b")),
       original             = "original_a",
       best_match           = "original_b",
+      first_name           = "first_name_a",
+      first_name_match     = "first_name_b",
       surnames             = "surnames_a",
       surnames_match       = "surnames_b",
       classification       = "classification",

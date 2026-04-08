@@ -51,12 +51,12 @@ sur_b <- read.csv("c:/projects/reclink_project/data/test/dataset_surnames_b.csv"
                   stringsAsFactors = FALSE)
 
 result_sur <- link_surnames(
-  surnames_a = sur_a$sobrenome,
-  surnames_b = sur_b$sobrenome,
-  id_a       = sur_a$id,
-  id_b       = sur_b$id,
-  link_by    = "first_letters",
-  n_letters  = 1
+  names_a  = sur_a$sobrenome,
+  names_b  = sur_b$sobrenome,
+  id_a     = sur_a$id,
+  id_b     = sur_b$id,
+  link_by  = "first_letters",
+  n_letters = 1
 )
 
 table(result_sur$classification)
