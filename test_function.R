@@ -7,6 +7,7 @@ gc()
 
 source("c:/projects/reclink_project/R/parse_names.R")
 source("c:/projects/reclink_project/R/link_names.R")
+source("c:/projects/reclink_project/R/link_surnames.R")
 
 # 1. Load test data
 dataset_a <- read.csv("c:/projects/reclink_project/data/test/dataset_a.csv",
@@ -42,3 +43,21 @@ result_full <- link_names(
 )
 
 table(result_full$classification)
+
+# 4. Link by surname only
+sur_a <- read.csv("c:/projects/reclink_project/data/test/dataset_surnames_a.csv",
+                  stringsAsFactors = FALSE)
+sur_b <- read.csv("c:/projects/reclink_project/data/test/dataset_surnames_b.csv",
+                  stringsAsFactors = FALSE)
+
+result_sur <- link_surnames(
+  surnames_a = sur_a$sobrenome,
+  surnames_b = sur_b$sobrenome,
+  id_a       = sur_a$id,
+  id_b       = sur_b$id,
+  link_by    = "first_letters",
+  n_letters  = 1
+)
+
+table(result_sur$classification)
+View(result_sur)

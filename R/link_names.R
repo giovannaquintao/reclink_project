@@ -54,8 +54,10 @@ classify_match <- function(fn_a, sur_a, fn_b, sur_b, jw_fn, jw_sur) {
   tok_a     <- sort(tok_a_raw)
   tok_b     <- sort(tok_b_raw)
 
-  sur_identical <- identical(tok_a_raw, tok_b_raw)
-  sur_reordered <- identical(tok_a, tok_b) && !sur_identical
+  toks_match           <- identical(tok_a_raw, tok_b_raw)
+  sur_identical        <- toks_match && has_rare_surname(tok_a_raw)
+  sur_identical_common <- toks_match && !sur_identical
+  sur_reordered        <- identical(tok_a, tok_b) && !toks_match
   shared        <- intersect(tok_a, tok_b)
   extra         <- setdiff(
     if (length(tok_a) > length(tok_b)) tok_a else tok_b,
@@ -80,22 +82,25 @@ classify_match <- function(fn_a, sur_a, fn_b, sur_b, jw_fn, jw_sur) {
     !is.na(jw_fn) && jw_fn <= 0.1
 
   dplyr::case_when(
-    fn_identical & sur_identical  ~ "fn_identical_sur_identical",
-    fn_identical & sur_reordered  ~ "fn_identical_sur_reordered",
-    fn_identical & sur_missing    ~ "fn_identical_sur_missing",
-    fn_identical & sur_typo       ~ "fn_identical_sur_typo",
-    fn_missing   & sur_identical  ~ "fn_missing_sur_identical",
-    fn_missing   & sur_reordered  ~ "fn_missing_sur_reordered",
-    fn_missing   & sur_missing    ~ "fn_missing_sur_missing",
-    fn_missing   & sur_typo       ~ "fn_missing_sur_typo",
-    fn_typo      & sur_identical  ~ "fn_typo_sur_identical",
-    fn_typo      & sur_reordered  ~ "fn_typo_sur_reordered",
-    fn_typo      & sur_missing    ~ "fn_typo_sur_missing",
-    fn_typo      & sur_typo       ~ "fn_typo_sur_typo",
-    fn_identical & sur_different  ~ "fn_identical_sur_different",
-    fn_missing   & sur_different  ~ "fn_missing_sur_different",
-    fn_typo      & sur_different  ~ "fn_typo_sur_different",
-    TRUE                          ~ "no_match"
+    fn_identical & sur_identical         ~ "fn_identical_sur_identical",
+    fn_identical & sur_reordered         ~ "fn_identical_sur_reordered",
+    fn_identical & sur_missing           ~ "fn_identical_sur_missing",
+    fn_identical & sur_typo              ~ "fn_identical_sur_typo",
+    fn_missing   & sur_identical         ~ "fn_missing_sur_identical",
+    fn_missing   & sur_reordered         ~ "fn_missing_sur_reordered",
+    fn_missing   & sur_missing           ~ "fn_missing_sur_missing",
+    fn_missing   & sur_typo              ~ "fn_missing_sur_typo",
+    fn_typo      & sur_identical         ~ "fn_typo_sur_identical",
+    fn_typo      & sur_reordered         ~ "fn_typo_sur_reordered",
+    fn_typo      & sur_missing           ~ "fn_typo_sur_missing",
+    fn_typo      & sur_typo              ~ "fn_typo_sur_typo",
+    fn_identical & sur_identical_common  ~ "fn_identical_sur_identical_common",
+    fn_missing   & sur_identical_common  ~ "fn_missing_sur_identical_common",
+    fn_typo      & sur_identical_common  ~ "fn_typo_sur_identical_common",
+    fn_identical & sur_different         ~ "fn_identical_sur_different",
+    fn_missing   & sur_different         ~ "fn_missing_sur_different",
+    fn_typo      & sur_different         ~ "fn_typo_sur_different",
+    TRUE                                 ~ "no_match"
   )
 }
 
@@ -239,6 +244,9 @@ link_names <- function(names_a, names_b,
     "fn_typo_sur_missing",
     "fn_missing_sur_typo",
     "fn_typo_sur_typo",
+    "fn_identical_sur_identical_common",
+    "fn_missing_sur_identical_common",
+    "fn_typo_sur_identical_common",
     "fn_identical_sur_different",
     "fn_missing_sur_different",
     "fn_typo_sur_different"
@@ -246,12 +254,32 @@ link_names <- function(names_a, names_b,
 
   scored |>
     filter(!.data$classification %in% c("no_match", "fn_typo_sur_typo",
- "fn_missing_sur_different", "fn_typo_sur_different")) |>
+      "fn_missing_sur_different", "fn_typo_sur_different")) |>
     mutate(class_rank = match(.data$classification, class_order)) |>
     arrange(.data$class_rank, .data$jw_first_name, .data$jw_mean_surnames) |>
     group_by(.data$original_a) |>
     slice(1) |>
     ungroup() |>
+    mutate(score = dplyr::case_when(
+      .data$classification == "fn_identical_sur_identical"        ~ 10,
+      .data$classification == "fn_identical_sur_identical_common" ~  9,
+      .data$classification == "fn_typo_sur_identical"             ~  8,
+      .data$classification == "fn_missing_sur_identical"          ~  7,
+      .data$classification == "fn_typo_sur_identical_common"      ~  7,
+      .data$classification == "fn_identical_sur_reordered"        ~  6,
+      .data$classification == "fn_missing_sur_identical_common"   ~  6,
+      .data$classification == "fn_typo_sur_reordered"             ~  5,
+      .data$classification == "fn_identical_sur_typo"             ~  4,
+      .data$classification == "fn_missing_sur_reordered"          ~  3,
+      .data$classification == "fn_identical_sur_missing"          ~  3,
+      .data$classification == "fn_typo_sur_typo"                  ~  2,
+      .data$classification == "fn_typo_sur_missing"               ~  2,
+      .data$classification == "fn_missing_sur_typo"               ~  1,
+      .data$classification == "fn_missing_sur_missing"            ~  0,
+      .data$classification == "fn_identical_sur_different"        ~  0,
+      .data$classification == "fn_missing_sur_different"          ~  0,
+      .data$classification == "fn_typo_sur_different"             ~  0
+    )) |>
     select(
       any_of(c(id_a = "id_a", id_b = "id_b")),
       original             = "original_a",
@@ -261,6 +289,7 @@ link_names <- function(names_a, names_b,
       surnames             = "surnames_a",
       surnames_match       = "surnames_b",
       classification       = "classification",
+      score                = "score",
       jw_first_name        = "jw_first_name",
       jw_mean_surnames     = "jw_mean_surnames",
       jw_complete_surnames = "jw_complete_surnames",
