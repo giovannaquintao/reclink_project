@@ -107,6 +107,7 @@ classify_match <- function(fn_a, sur_a, fn_b, sur_b, jw_fn, jw_sur) {
 #' Link two vectors of names
 #'
 #' @param names_a      Character vector of names (source dataset)
+#' @export
 #' @param names_b      Character vector of names (target dataset)
 #' @param link_by      Blocking variables. Options: "first_letters",
 #'                     "first_name", "date_birth", "sex"

@@ -55,6 +55,7 @@ classify_surname_match <- function(sur_a, sur_b, jw_sur) {
 #' Link two vectors of surnames
 #'
 #' @param surnames_a   Character vector of surnames (source dataset)
+#' @export
 #' @param surnames_b   Character vector of surnames (target dataset)
 #' @param id_a         Identifier vector for surnames_a
 #' @param id_b         Identifier vector for surnames_b
